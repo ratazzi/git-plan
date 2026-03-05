@@ -3,7 +3,9 @@ name = "git-plan"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Fine-grained git staging by hunk or line number"
+description = "Non-interactive fine-grained git staging by hunk or line number, designed for AI-driven atomic commits without git add -i"
+keywords = ["git", "staging", "atomic-commits", "cli", "ai"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 git2 = "0.20"
