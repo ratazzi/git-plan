@@ -37,6 +37,13 @@ pub fn get_file_diff(repo: &Repository, path: &str) -> Result<FileDiff> {
     if num_deltas == 0 {
         bail!("No changes found for '{}'", path);
     }
+    if num_deltas > 1 {
+        bail!(
+            "Path '{}' matched {} files, please specify a single file",
+            path,
+            num_deltas
+        );
+    }
 
     let patch = Patch::from_diff(&diff, 0)
         .context("Failed to get patch")?
