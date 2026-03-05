@@ -134,3 +134,110 @@ pub fn filter_by_lines(file_diff: &FileDiff, selected_ranges: &[(usize, usize)])
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diff::Hunk;
+
+    fn make_line(origin: char, content: &str) -> DiffLine {
+        DiffLine {
+            origin,
+            content: format!("{content}\n"),
+        }
+    }
+
+    fn make_test_diff() -> FileDiff {
+        FileDiff {
+            old_path: "a/foo.rs".to_string(),
+            new_path: "b/foo.rs".to_string(),
+            hunks: vec![
+                Hunk {
+                    header: "@@ -1,3 +1,4 @@".to_string(),
+                    old_start: 1,
+                    old_lines: 3,
+                    new_start: 1,
+                    new_lines: 4,
+                    lines: vec![
+                        make_line(' ', "fn hello() {"),
+                        make_line('+', "    println!(\"world\");"),
+                        make_line(' ', "}"),
+                    ],
+                },
+                Hunk {
+                    header: "@@ -5,3 +6,4 @@".to_string(),
+                    old_start: 5,
+                    old_lines: 3,
+                    new_start: 6,
+                    new_lines: 4,
+                    lines: vec![
+                        make_line(' ', "fn bye() {"),
+                        make_line('+', "    println!(\"bye\");"),
+                        make_line(' ', "}"),
+                    ],
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn filter_by_hunks_selects_first_only() {
+        let diff = make_test_diff();
+        let patch = filter_by_hunks(&diff, &[0]);
+        assert!(patch.contains("println!(\"world\")"));
+        assert!(!patch.contains("println!(\"bye\")"));
+    }
+
+    #[test]
+    fn filter_by_hunks_selects_second_only() {
+        let diff = make_test_diff();
+        let patch = filter_by_hunks(&diff, &[1]);
+        assert!(!patch.contains("println!(\"world\")"));
+        assert!(patch.contains("println!(\"bye\")"));
+        // new_start adjusted: original 6, hunk a added 1 line (skipped), so 6-1=5
+        // old_lines=2, new_lines=3 (recalculated from actual line content)
+        assert!(patch.contains("@@ -5,2 +5,3 @@"));
+    }
+
+    #[test]
+    fn filter_by_lines_selects_added_line() {
+        let diff = make_test_diff();
+        // line 2 is the '+' in hunk a
+        let patch = filter_by_lines(&diff, &[(2, 2)]);
+        assert!(patch.contains("println!(\"world\")"));
+        // hunk b's '+' at line 5 should not be included
+        assert!(!patch.contains("+    println!(\"bye\")"));
+    }
+
+    #[test]
+    fn filter_by_lines_unselected_minus_becomes_context() {
+        let diff = FileDiff {
+            old_path: "a/foo.rs".to_string(),
+            new_path: "b/foo.rs".to_string(),
+            hunks: vec![Hunk {
+                header: "@@ -1,3 +1,2 @@".to_string(),
+                old_start: 1,
+                old_lines: 3,
+                new_start: 1,
+                new_lines: 2,
+                lines: vec![
+                    make_line(' ', "keep"),
+                    make_line('-', "removed"),
+                    make_line(' ', "end"),
+                ],
+            }],
+        };
+        // Don't select line 2 (the '-' line) -> should become context
+        let patch = filter_by_lines(&diff, &[(1, 1)]);
+        assert!(patch.contains(" removed\n"));
+        assert!(!patch.contains("-removed"));
+    }
+
+    #[test]
+    fn filter_all_includes_everything() {
+        let diff = make_test_diff();
+        let patch = filter_all(&diff);
+        assert!(patch.contains("println!(\"world\")"));
+        assert!(patch.contains("println!(\"bye\")"));
+    }
+}

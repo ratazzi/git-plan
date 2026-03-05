@@ -146,3 +146,31 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_hunk_letters() {
+        assert_eq!(parse_hunk_selection("a,c"), vec![0, 2]);
+    }
+
+    #[test]
+    fn parse_hunk_invalid_ignored() {
+        assert_eq!(parse_hunk_selection("A,!,a"), vec![0]);
+    }
+
+    #[test]
+    fn parse_lines_ranges_and_singles() {
+        assert_eq!(
+            parse_line_selection("3-8, 15"),
+            vec![(3, 8), (15, 15)]
+        );
+    }
+
+    #[test]
+    fn parse_lines_empty_input() {
+        assert!(parse_line_selection("").is_empty());
+    }
+}
