@@ -3,7 +3,7 @@ mod display;
 mod filter;
 mod stage;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use std::io::{self, BufRead, Write};
 
@@ -99,11 +99,17 @@ fn main() -> Result<()> {
                 println!("Staged all changes in {}", file);
             } else if let Some(hunks_str) = hunks {
                 let selected = parse_hunk_selection(&hunks_str);
+                if selected.is_empty() {
+                    bail!("No valid hunks in '{}'", hunks_str);
+                }
                 let patch = filter::filter_by_hunks(&file_diff, &selected);
                 stage::apply_to_index(&repo, &patch)?;
                 println!("Staged selected hunks in {}", file);
             } else if let Some(lines_str) = lines {
                 let selected = parse_line_selection(&lines_str);
+                if selected.is_empty() {
+                    bail!("No valid line ranges in '{}'", lines_str);
+                }
                 let patch = filter::filter_by_lines(&file_diff, &selected);
                 stage::apply_to_index(&repo, &patch)?;
                 println!("Staged selected lines in {}", file);
